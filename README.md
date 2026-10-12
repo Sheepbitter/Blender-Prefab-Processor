@@ -1,10 +1,10 @@
 # Bannerlord Prefab Processor
 
-A Blender 4.5 addon for preparing Mount & Blade II: Bannerlord prefab exports. It merges intersecting kitbash pieces, removes buried interior geometry, simplifies the result while protecting detail, preserves materials and UVs, and generates a matching `bo_` physics mesh — all in one click.
+A Blender 4.5 add-on for preparing Mount & Blade II: Bannerlord prefab exports. It merges intersecting kitbash pieces, removes buried interior geometry, simplifies the result while protecting detail, preserves materials and UVs, and generates a matching `bo_` physics mesh — all in one click.
 
 ## Why
 
-A Bannerlord prefab is built by kitbashing many small meshes together. Exporting that straight to the engine leaves you with thousands of hidden interior faces, several materials on a single mesh, and no collision geometry. This addon turns the OBJ export into a clean render mesh plus a `bo_` physics mesh ready for the Modding Kit.
+A Bannerlord prefab built from kitbashing within the editor leaves you with tons of wasted interior faces and high asset usage that hurts performance and is unnecessary. This add-on turns the OBJ export into a clean render FBX mesh plus a `bo_` physics mesh ready for the Modding Kit.
 
 ## Installation
 
@@ -12,24 +12,36 @@ A Bannerlord prefab is built by kitbashing many small meshes together. Exporting
    ```
    C:\Users\<YourUsername>\AppData\Roaming\Blender Foundation\Blender\4.5\scripts\addons\
    ```
-2. Open Blender 4.5.
+2. Open Blender 4.5. (May work on other versions of blender, but has not been tested. Will likely need some changes to account for API updates)
 3. Go to **Edit > Preferences > Add-ons**, search for "Bannerlord Prefab Processor", and enable the checkbox.
 
 ## Usage
 
 1. **Import** your Bannerlord OBJ export (`File > Import > Wavefront (.obj)`).
-2. **Select** all mesh objects you want to process.
-3. Open the **N-panel** in the 3D Viewport (`N`) and switch to the **Bannerlord** tab.
-4. Adjust settings if needed.
+2. **Select** the mesh.
+3. Open the **N-panel** in the 3D Viewport (`Press N`) and switch to the **Bannerlord** tab.
+4. Adjust settings.
 5. Click **Process Prefab**.
 
-Settings persist across Blender sessions.
+
+## Recommended Settings:
+Merge Method: Cull Interior
+Simplify Method: Curvature-Weighted
+Detail Weight: 0.7
+Decimate Mode: Whichever you prefer. Note, the number of faces the mesh has already is displayed at the top of the panel
+Decimate Passes: 3-10
+Consolidate Materials: Enabled
+bo_ Decimate Mode: Whichever you prefer. Note the ratio is based on how many faces the original mesh was decimated to, so a 20k mesh decimated to 6k with a 0.1 ratio should have ~600 faces for the body object
+Filter Detail: Enabled
+bo_ Filter Strength: 0.7
+Export After Processing: Enabled
+Export Path: The Assets folder (or a sub-folder) of your module.
 
 ## Merge Methods
 
 | Method | What it does | Result |
 |--------|--------------|--------|
-| **Cull Interior** (default) | Builds a cheap closed voxel shell (auto-sized to bounding-box/1000) and uses ray-cast parity to delete only provably buried faces. | Keeps the original surface, UVs, materials and thin details. Stays an open surface, like the source. |
+| **Cull Interior** (default) | Builds a cheap closed voxel shell (auto-sized to bounding-box/1000) and uses ray-cast parity to delete only provably buried faces. | Keeps the original surface, UVs, materials and thin details. Stays an open surface, like the source.|
 | **Voxel Remesh** | Resurfaces everything into one watertight shell at the chosen Voxel Size. | Closed and clean, but blockier and can lose sub-voxel detail. |
 
 Use **Cull Interior** when the exported mesh already looks right and you only want the hidden interior gone: it never resamples, so there is no blockiness and no loss of detail.
@@ -70,13 +82,3 @@ Use **Voxel Remesh** when the kitbash has bad self-intersections or you need a g
 - **Voxel mode:** `bo_` is watertight.
 - Islands that are physically detached from the main assembly, and islands that decimate down to a few stray faces, are pruned from `bo_` only. The render mesh always keeps every island.
 - `bo_ Filter Detail` cannot remove detached sticks on its own: reverse-curvature weighting protects the smooth parts of each piece, so a small isolated stick survives even at strength `1.0`. The island pruning is what removes them.
-
-## Requirements
-
-- Blender 4.5
-- Mount & Blade II: Bannerlord Modding Kit (to export prefabs as OBJ)
-
-## Notes
-
-- A Bannerlord mesh may use only one material. Multi-material meshes are exported as automatically named submeshes, so **Consolidate Materials** is on by default.
-- An "island" here is a topologically disconnected face component (faces joined through shared edges). That is *not* the same as a separate object: a kitbash is assembled from pieces that intersect without sharing an edge, so one physical object routinely arrives as dozens of islands.
