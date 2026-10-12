@@ -6,6 +6,9 @@ A Blender 4.5 add-on for preparing Mount & Blade II: Bannerlord prefab exports. 
 
 A Bannerlord prefab built from kitbashing within the editor leaves you with tons of wasted interior faces and high asset usage that hurts performance and is unnecessary. This add-on turns the OBJ export into a clean render FBX mesh plus a `bo_` physics mesh ready for the Modding Kit.
 
+## How it works
+
+It takes the mesh and creates a voxel mesh copy. It then compares the original mesh against the voxel mesh to determine what from the original mesh should be kept. Then it also keeps any vertices that shares a face from the vertices that are kept from the comparison, this is a cheap way to ensure no holes form where the meshes from the prefab intersect. Then it raycasts the remaining vertices against the voxel mesh to determine what to keep; interior vertices will always have an odd number of collisions with the voxel mesh; exterior vertices will always have an even number. Finally, it decimates the mesh and produces a physics body according to the user's settings. 
 ## Installation
 
 1. Copy the `Blender-Prefab-Processor` folder to:
@@ -82,3 +85,10 @@ Use **Voxel Remesh** when the kitbash has bad self-intersections or you need a g
 - **Voxel mode:** `bo_` is watertight.
 - Islands that are physically detached from the main assembly, and islands that decimate down to a few stray faces, are pruned from `bo_` only. The render mesh always keeps every island.
 - `bo_ Filter Detail` cannot remove detached sticks on its own: reverse-curvature weighting protects the smooth parts of each piece, so a small isolated stick survives even at strength `1.0`. The island pruning is what removes them.
+
+### To Do (one day)
+- Make Recommended settings the default
+- Get the settings to save and persist
+- Improve the tool to create/weld overlapping faces for new edges. This will allow the safety net of keeping any vertices that share a face with an kept vertex to be removed and let the interior culling be complete and total without introducing any potential holes/gaps.
+- Add clean batch processing.
+- Make the add-on a standalone tool, cause all this stuff doesn't actually need blender. I've already done half or so of this in another project for a different standalone tool, so I don't see a reason blender would actually be required. Maybe a hybrid that can be run standalone and hooks into blender as an addon so people who prefer to use it that way can. After all, you can make your own adjustments manually in blender directly, so there's good reason to keep it.
