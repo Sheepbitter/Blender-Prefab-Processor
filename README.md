@@ -89,6 +89,6 @@ Use **Voxel Remesh** when the kitbash has bad self-intersections or you need a g
 ### To Do (one day)
 - Make Recommended settings the default
 - Get the settings to save and persist
-- Improve the tool to create/weld overlapping faces for new edges. This will allow the safety net of keeping any vertices that share a face with an kept vertex to be removed and let the interior culling be complete and total without introducing any potential holes/gaps.
+- Improve the tool to create/weld overlapping faces for new edges. This will allow the safety net of keeping any vertices that share a face with the first pass known good vertices to be removed and let the interior culling be complete and total without introducing any potential holes/gaps.
 - Add clean batch processing.
 - Make the add-on a standalone tool, cause all this stuff doesn't actually need blender. I've already done half or so of this in another project for a different standalone tool, so I don't see a reason blender would actually be required. Maybe a hybrid that can be run standalone and hooks into blender as an addon so people who prefer to use it that way can. After all, you can make your own adjustments manually in blender directly, so there's good reason to keep it.
