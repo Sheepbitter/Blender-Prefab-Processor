@@ -25,17 +25,17 @@ A Bannerlord prefab built from kitbashing within the editor leaves you with tons
 
 
 ## Recommended Settings:
-Merge Method: Cull Interior
-Simplify Method: Curvature-Weighted
-Detail Weight: 0.7
-Decimate Mode: Whichever you prefer. Note, the number of faces the mesh has already is displayed at the top of the panel
-Decimate Passes: 3-10
-Consolidate Materials: Enabled
-bo_ Decimate Mode: Whichever you prefer. Note the ratio is based on how many faces the original mesh was decimated to, so a 20k mesh decimated to 6k with a 0.1 ratio should have ~600 faces for the body object
-Filter Detail: Enabled
-bo_ Filter Strength: 0.7
-Export After Processing: Enabled
-Export Path: The Assets folder (or a sub-folder) of your module.
+- Merge Method: Cull Interior
+- Simplify Method: Curvature-Weighted
+- Detail Weight: 0.7
+- Decimate Mode: Whichever you prefer. Note, the number of faces the mesh has already is displayed at the top of the panel
+- Decimate Passes: 3-10
+- Consolidate Materials: Enabled
+- bo_ Decimate Mode: Whichever you prefer. Note the ratio is based on how many faces the original mesh was decimated to, so a 20k mesh decimated to 6k with a 0.1 ratio should have ~600 faces for the body object
+- Filter Detail: Enabled
+- bo_ Filter Strength: 0.7
+- Export After Processing: Enabled
+- Export Path: The Assets folder (or a sub-folder) of your module.
 
 ## Merge Methods
 
