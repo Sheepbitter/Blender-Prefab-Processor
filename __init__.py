@@ -63,11 +63,11 @@ class BANNERLORD_AddonPreferences(bpy.types.AddonPreferences):
             ('CURVATURE', "Curvature-Weighted", ""),
             ('STANDARD', "Standard Decimate", ""),
         ],
-        default='PLANAR',
+        default='CURVATURE',
     )
     detail_weight: FloatProperty(
         name="Detail Weight",
-        default=0.5,
+        default=0.7,
         min=0.0,
         max=1.0,
     )
@@ -92,7 +92,7 @@ class BANNERLORD_AddonPreferences(bpy.types.AddonPreferences):
     )
     decimate_passes: IntProperty(
         name="Decimate Passes",
-        default=3,
+        default=10,
         min=1,
         max=10,
     )
@@ -117,7 +117,7 @@ class BANNERLORD_AddonPreferences(bpy.types.AddonPreferences):
     )
     bo_filter_detail: BoolProperty(
         name="Filter Detail",
-        default=False,
+        default=True,
     )
     bo_filter_strength: FloatProperty(
         name="bo_ Filter Strength",

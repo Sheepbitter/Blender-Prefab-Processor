@@ -158,11 +158,11 @@ def register():
             ('CURVATURE', "Curvature-Weighted", ""),
             ('STANDARD', "Standard Decimate", ""),
         ],
-        default='PLANAR',
+        default='CURVATURE',
     )
     bpy.types.Scene.bl_decimate_passes = bpy.props.IntProperty(
         name="Decimate Passes",
-        default=3,
+        default=10,
         min=1,
         max=100,
     )
@@ -192,7 +192,7 @@ def register():
     bpy.types.Scene.bl_detail_weight = bpy.props.FloatProperty(
         name="Detail Weight",
         description="How strongly to protect fine details during decimation",
-        default=0.5,
+        default=0.7,
         min=0.0,
         max=1.0,
         step=0.05,
@@ -223,7 +223,7 @@ def register():
     bpy.types.Scene.bl_bo_filter_detail = bpy.props.BoolProperty(
         name="Filter Detail",
         description="Reverse-curvature decimation: collapse detail first",
-        default=False,
+        default=True,
     )
     bpy.types.Scene.bl_bo_filter_strength = bpy.props.FloatProperty(
         name="bo_ Filter Strength",
