@@ -88,6 +88,7 @@ Use **Voxel Remesh** when the kitbash has bad self-intersections or you need a g
 
 ### To Do (one day)
 - Make Recommended settings the default
+- Create Auto LODs, should be simple enough, just add option for how many, decimate at different levels automatically, let users fine-tune it if they want, generate. Bannerlord only needs the names adjusted to know, so .lod1, .lod2, etc. 
 - Get the settings to save and persist
 - Improve the tool to create/weld overlapping faces for new edges. This will allow the safety net of keeping any vertices that share a face with the first pass known good vertices to be removed and let the interior culling be complete and total without introducing any potential holes/gaps.
 - Add clean batch processing.
