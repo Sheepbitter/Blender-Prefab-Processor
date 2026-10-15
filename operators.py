@@ -716,7 +716,17 @@ class BANNERLORD_OT_process_prefab(Operator):
         bpy.context.collection.objects.link(sel)
         sel.select_set(True)
         context.view_layer.objects.active = sel
-        sel.data.use_remesh_preserve_attributes = True
+        # The shell is a parity oracle: nothing reads its UVs, materials or
+        # custom split normals, so preserving attributes is pure memory
+        # waste -- and it multiplies the CustomData footprint allocated when
+        # the shell is converted to a BMesh below. Measured on a 6-storey
+        # interior prefab (5.6M shell faces): preserving attributes peaked
+        # at 8.0 GB of working set for a 942-face source, and in the field
+        # this OOM-killed Blender with an access violation inside
+        # CustomData_bmesh_alloc_block. The user-facing Voxel Remesh merge
+        # mode keeps True because there the remesh IS the deliverable; the
+        # shell is thrown away.
+        sel.data.use_remesh_preserve_attributes = False
         sel.data.use_remesh_preserve_volume = False
         sel.data.remesh_voxel_size = voxel
         sel.data.remesh_voxel_adaptivity = 0.0
