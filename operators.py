@@ -25,8 +25,8 @@ class BANNERLORD_OT_process_prefab(Operator):
 
     decimate_ratio: FloatProperty(
         name="Decimate Ratio",
-        description="Ratio of faces to keep on physics mesh (lower = fewer polys)",
-        default=0.1,
+        description="Ratio of faces to keep on the main mesh (lower = fewer polys)",
+        default=0.5,
         min=0.01,
         max=1.0,
         step=0.01,
@@ -49,13 +49,13 @@ class BANNERLORD_OT_process_prefab(Operator):
             ('CURVATURE', "Curvature-Weighted", "Protects high-curvature areas during decimation. Best detail preservation"),
             ('STANDARD', "Standard Decimate", "Plain ratio-based decimation. Fastest but may lose detail"),
         ],
-        default='PLANAR',
+        default='CURVATURE',
     )
 
     decimate_passes: bpy.props.IntProperty(
         name="Decimate Passes",
         description="Number of decimation passes (higher = better silhouette preservation)",
-        default=3,
+        default=10,
         min=1,
         max=10,
         step=1,
@@ -82,7 +82,7 @@ class BANNERLORD_OT_process_prefab(Operator):
     detail_weight: FloatProperty(
         name="Detail Weight",
         description="How strongly to protect fine details during decimation (0 = no protection, 1 = maximum protection)",
-        default=0.5,
+        default=0.7,
         min=0.0,
         max=1.0,
         step=0.05,
@@ -127,7 +127,7 @@ class BANNERLORD_OT_process_prefab(Operator):
     bo_filter_detail: BoolProperty(
         name="Filter Detail",
         description="Reverse-curvature decimation: collapse fine detail and creases first, keeping smooth bulky regions. Better collision proxy at the same face budget",
-        default=False,
+        default=True,
     )
 
     bo_filter_strength: FloatProperty(
@@ -138,6 +138,21 @@ class BANNERLORD_OT_process_prefab(Operator):
         max=1.0,
         step=0.05,
     )
+
+    lod_enabled: BoolProperty(
+        name="Auto Generate LODs",
+        description="Generate <name>.lod1 ... <name>.lod6 from the finished main mesh. LOD 0 is the main mesh itself and is never modified",
+        default=True,
+    )
+
+    # These are a transfer bag, synced from the scene in execute() and never
+    # drawn in UI, so they skip the description/step/precision ceremony.
+    lod1_ratio: FloatProperty(name="LOD1 Ratio", default=0.9, min=0.0, max=1.0)
+    lod2_ratio: FloatProperty(name="LOD2 Ratio", default=0.8, min=0.0, max=1.0)
+    lod3_ratio: FloatProperty(name="LOD3 Ratio", default=0.6, min=0.0, max=1.0)
+    lod4_ratio: FloatProperty(name="LOD4 Ratio", default=0.4, min=0.0, max=1.0)
+    lod5_ratio: FloatProperty(name="LOD5 Ratio", default=0.2, min=0.0, max=1.0)
+    lod6_ratio: FloatProperty(name="LOD6 Ratio", default=0.05, min=0.0, max=1.0)
 
     merge_method: EnumProperty(
         name="Merge Method",
@@ -200,6 +215,9 @@ class BANNERLORD_OT_process_prefab(Operator):
         self.consolidate_materials = scene.bl_consolidate_materials
         self.export_after = scene.bl_export_after
         self.export_path = scene.bl_export_path
+        self.lod_enabled = scene.bl_lod_enabled
+        for i in range(1, 7):
+            setattr(self, f"lod{i}_ratio", getattr(scene, f"bl_lod{i}_ratio"))
 
         # Store original selection
         original_selection = context.selected_objects.copy()
@@ -290,6 +308,10 @@ class BANNERLORD_OT_process_prefab(Operator):
         if self.consolidate_materials:
             self._consolidate_materials(merged_obj)
 
+        # Step 7b: auto LODs. Deliberately AFTER consolidation so every LOD
+        # inherits the same deduplicated material slots as LOD 0.
+        lod_objs = self._generate_lods(merged_obj, context)
+
         # Step 8: Export if requested
         if self.export_after:
             if not self.export_path:
@@ -299,21 +321,27 @@ class BANNERLORD_OT_process_prefab(Operator):
                     "nothing was written. Set a path in the Bannerlord panel.",
                 )
             else:
-                self._export_obj(merged_obj, bo_obj, context)
+                self._export_obj(merged_obj, bo_obj, context, lod_objs)
 
         # Select the results
         bpy.ops.object.select_all(action='DESELECT')
         merged_obj.select_set(True)
         bo_obj.select_set(True)
+        for lod in lod_objs:
+            lod.select_set(True)
         context.view_layer.objects.active = merged_obj
 
         src_faces = getattr(self, "source_faces", 0)
         main_faces = len(merged_obj.data.polygons)
         bo_faces = len(bo_obj.data.polygons)
+        lod_txt = ", ".join(
+            f"{o.name}={len(o.data.polygons):,}" for o in lod_objs
+        ) or "none"
         self.report(
             {'INFO'},
             f"Input {src_faces:,} faces -> main {main_faces:,} + bo_ {bo_faces:,} "
-            f"(physics is {100.0 * bo_faces / main_faces:.1f}% of main)",
+            f"(physics is {100.0 * bo_faces / main_faces:.1f}% of main) "
+            f"| LODs: {lod_txt}",
         )
 
     def _apply_modifiers_and_transforms(self, objects):
@@ -804,11 +832,26 @@ class BANNERLORD_OT_process_prefab(Operator):
                 return min(1.0, self.target_faces / current)
         return self.decimate_ratio
 
-    def _simplify_mesh(self, obj):
-        """Simplify mesh while preserving detail using the selected method"""
+    def _simplify_mesh(self, obj, target_faces=None):
+        """Simplify mesh while preserving detail using the selected method.
+
+        target_faces overrides the user's Decimate Mode with an absolute face
+        count. LOD generation passes one in per LOD; the method, Detail Weight
+        and pass count still follow the main decimation settings.
+        """
         bpy.ops.object.select_all(action='DESELECT')
         obj.select_set(True)
         bpy.context.view_layer.objects.active = obj
+
+        def resolve_ratio():
+            # Like _resolve_ratio but against an explicit count. The ratio is
+            # taken from the face count present at this moment -- in Planar
+            # mode that is only known after the dissolve, which is why this
+            # closure is called inside each branch rather than up front.
+            if target_faces is not None:
+                current = len(obj.data.polygons)
+                return min(1.0, target_faces / current) if current > 0 else 1.0
+            return self._resolve_ratio(obj)
 
         if self.simplify_method == 'PLANAR':
             # Planar pre-pass: merge near-coplanar faces first, then decimate.
@@ -828,7 +871,7 @@ class BANNERLORD_OT_process_prefab(Operator):
 
             # Resolve the ratio only now, after the dissolve, so Target Faces
             # refers to the mesh the decimator actually sees.
-            ratio = self._resolve_ratio(obj)
+            ratio = resolve_ratio()
 
             # Multi-pass decimate for better silhouette preservation
             ratio_per_pass = ratio ** (1.0 / self.decimate_passes)
@@ -840,7 +883,7 @@ class BANNERLORD_OT_process_prefab(Operator):
 
         elif self.simplify_method == 'CURVATURE':
             # Protect high-curvature vertices during decimation
-            ratio = self._resolve_ratio(obj)
+            ratio = resolve_ratio()
             self._apply_curvature_group(
                 obj, "Curvature", invert=False, strength=self.detail_weight
             )
@@ -862,13 +905,15 @@ class BANNERLORD_OT_process_prefab(Operator):
             # Standard ratio-based decimation
             decimate_mod = obj.modifiers.new(name="Decimate", type='DECIMATE')
             decimate_mod.decimate_type = 'COLLAPSE'
-            decimate_mod.ratio = self._resolve_ratio(obj)
+            decimate_mod.ratio = resolve_ratio()
             bpy.ops.object.modifier_apply(modifier=decimate_mod.name)
 
-        # In Target mode, converge on the requested count. Ratio mode is left
-        # alone: the user asked for a ratio, and over-shooting it is expected
-        # behaviour of Blender's decimator rather than a bug to hide.
-        if self.decimate_mode == 'TARGET' and self.target_faces > 0:
+        # Converge on the requested count. Ratio mode is left alone: the user
+        # asked for a ratio, and over-shooting it is expected behaviour of
+        # Blender's decimator rather than a bug to hide.
+        if target_faces is not None:
+            self._trim_to_target(obj, target_faces)
+        elif self.decimate_mode == 'TARGET' and self.target_faces > 0:
             self._trim_to_target(obj, self.target_faces)
 
     def _trim_to_target(self, obj, target, tolerance=1.15, max_passes=10):
@@ -1063,6 +1108,53 @@ class BANNERLORD_OT_process_prefab(Operator):
 
         return bo_obj
 
+    def _generate_lods(self, main_obj, context):
+        """Generate <base>.lod1 ... <base>.lod6 from the finished main mesh.
+
+        LOD 0 is the main mesh itself and is never modified. Each LOD N is a
+        fresh duplicate of LOD 0 decimated to lod{N}_ratio of LOD 0's face
+        count. Ratios are measured against LOD 0, not against the previous
+        LOD, so editing one does not shift the others.
+
+        Method, Detail Weight and pass count follow the main decimation via
+        _simplify_mesh. UVs and materials are KEPT: a LOD is a render mesh,
+        and Bannerlord expects every LOD to share LOD 0's material set. A
+        ratio of 0 (or >= 1) skips that LOD.
+        """
+        if not self.lod_enabled:
+            return []
+
+        base = main_obj.name
+        lod0_faces = len(main_obj.data.polygons)
+        lods = []
+        for i in range(1, 7):
+            ratio = getattr(self, f"lod{i}_ratio")
+            if ratio <= 0.0:
+                continue
+            target = max(1, int(round(lod0_faces * ratio)))
+            if target >= lod0_faces:
+                continue
+
+            bpy.ops.object.select_all(action='DESELECT')
+            main_obj.select_set(True)
+            context.view_layer.objects.active = main_obj
+            bpy.ops.object.duplicate()
+
+            lod = context.active_object
+            # The suffix is set on BOTH names. Bannerlord binds LODs to a mesh
+            # by this suffix, so the object and its mesh data must agree.
+            lod.name = f"{base}.lod{i}"
+            lod.data.name = f"{base}.lod{i}"
+
+            self._simplify_mesh(lod, target_faces=target)
+            self._cleanup_mesh(lod)
+            lods.append(lod)
+            print(
+                f"[lod] {lod.name}: {lod0_faces:,} -> "
+                f"{len(lod.data.polygons):,} faces (target {target:,})"
+            )
+        return lods
+
     def _consolidate_materials(self, obj):
         """Consolidate duplicate materials"""
         if not obj.data.materials:
@@ -1113,7 +1205,7 @@ class BANNERLORD_OT_process_prefab(Operator):
         # Add more comparisons as needed (metallic, roughness, etc.)
         return True
 
-    def _export_obj(self, merged_obj, bo_obj, context):
+    def _export_obj(self, merged_obj, bo_obj, context, lod_objs=None):
         """Export processed meshes as FBX (Bannerlord format)"""
         export_dir = bpy.path.abspath(self.export_path)
         if not os.path.exists(export_dir):
@@ -1121,10 +1213,14 @@ class BANNERLORD_OT_process_prefab(Operator):
 
         base_name = merged_obj.name
 
-        # Export merged mesh as FBX
+        # Export the render meshes as ONE FBX. The LODs travel in the same
+        # file as LOD 0: Bannerlord matches LODs to a mesh by the .lodN suffix
+        # on the mesh name, so splitting them across files would orphan them.
         merged_path = os.path.join(export_dir, f"{base_name}.fbx")
         bpy.ops.object.select_all(action='DESELECT')
         merged_obj.select_set(True)
+        for lod in (lod_objs or []):
+            lod.select_set(True)
         context.view_layer.objects.active = merged_obj
         bpy.ops.export_scene.fbx(
             filepath=merged_path,

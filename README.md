@@ -63,6 +63,8 @@ Use **Voxel Remesh** when the kitbash has bad self-intersections or you need a g
 | **Decimate Mode** | `Ratio` or `Target Faces` (main mesh) |
 | **Decimate Ratio** / **Target Face Count** | Main-mesh reduction (whichever mode is active) |
 | **Decimate Passes** | Number of collapse passes |
+| **Auto Generate LODs** | Generate `<name>.lod1` … `<name>.lod6` from the finished main mesh (see [Auto LODs](#auto-lods)). Enabled by default |
+| **LOD1–LOD6 Ratio** | Faces kept vs LOD 0. Defaults `0.9 / 0.8 / 0.6 / 0.4 / 0.2 / 0.05`. Set a ratio to `0` to skip that LOD |
 | **Consolidate Materials** | Merge duplicate materials and remap faces |
 | **bo_ Decimate Mode** | `Ratio` or `Target Faces` (physics mesh) |
 | **bo_ Decimate Ratio** / **bo_ Target Face Count** | Physics-mesh reduction (whichever mode is active) |
@@ -72,11 +74,31 @@ Use **Voxel Remesh** when the kitbash has bad self-intersections or you need a g
 | **Export Path** | Output directory for the exported files |
 | **Quick Export Path** | Separate output directory for the **Export Selected as FBX** button |
 
+## Auto LODs
+
+**Auto Generate LODs** (on by default) builds the Bannerlord LOD chain from the finished main mesh. LOD 0 **is** the main mesh — it is never modified. Each higher LOD is a fresh copy of LOD 0 decimated to its ratio of LOD 0's face count, using the same simplify method, Detail Weight and pass count as the main decimation. UVs and materials are preserved on every LOD.
+
+| LOD | Default ratio | Faces kept vs LOD 0 |
+|-----|---------------|---------------------|
+| LOD1 | 0.9 | 90% |
+| LOD2 | 0.8 | 80% |
+| LOD3 | 0.6 | 60% |
+| LOD4 | 0.4 | 40% |
+| LOD5 | 0.2 | 20% |
+| LOD6 | 0.05 | 5% |
+
+- Ratios are measured against **LOD 0**, not against the previous LOD, so editing one does not shift the others.
+- Set a ratio to `0` to skip that LOD.
+- LODs are named `<prefab_name>.lod1` … `.lod6` and are written into the **same FBX** as LOD 0 — the engine finds them by that suffix.
+- `bo_` is never LOD'd: Bannerlord physics is a single mesh.
+
+For reference, the default LOD distances in the Bannerlord scene editor are 15, 22.5, 30, 50, 70, 130 and 210 m — LOD 0 is shown from 0–15 m, LOD 1 from 15–22.5 m, and so on. Those distances live in the scene editor rather than the FBX, so the add-on does not write them.
+
 ## Output
 
 | File | Contents |
 |------|----------|
-| `<prefab_name>.fbx` | Merged visual mesh. Cull mode keeps the original surfaces; Voxel mode is a watertight resurface |
+| `<prefab_name>.fbx` | All render meshes: LOD 0 (the main mesh) plus every generated LOD. Cull mode keeps the original surfaces; Voxel mode is a watertight resurface |
 | `bo_<prefab_name>.fbx` | Physics mesh. No materials, no UVs, no vertex groups |
 
 ### `bo_` behaviour
@@ -87,8 +109,6 @@ Use **Voxel Remesh** when the kitbash has bad self-intersections or you need a g
 - `bo_ Filter Detail` cannot remove detached sticks on its own: reverse-curvature weighting protects the smooth parts of each piece, so a small isolated stick survives even at strength `1.0`. The island pruning is what removes them.
 
 ### To Do (one day)
-- Make Recommended settings the default
-- Create Auto LODs, should be simple enough, just add option for how many, decimate at different levels automatically, let users fine-tune it if they want, generate. Bannerlord only needs the names adjusted to know, so .lod1, .lod2, etc. 
 - Get the settings to save and persist
 - Improve the tool to create/weld overlapping faces for new edges. This will allow the safety net of keeping any vertices that share a face with the first pass known good vertices to be removed and let the interior culling be complete and total without introducing any potential holes/gaps.
 - Add clean batch processing.

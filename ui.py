@@ -18,6 +18,13 @@ PREF_FIELDS = (
     "decimate_ratio",
     "target_faces",
     "decimate_passes",
+    "lod_enabled",
+    "lod1_ratio",
+    "lod2_ratio",
+    "lod3_ratio",
+    "lod4_ratio",
+    "lod5_ratio",
+    "lod6_ratio",
     "bo_decimate_mode",
     "bo_decimate_ratio",
     "bo_target_faces",
@@ -88,6 +95,15 @@ class BANNERLORD_PT_prefab_processor(Panel):
         col.prop(scene, "bl_consolidate_materials")
 
         layout.separator()
+        col.label(text="LODs:")
+        col.prop(scene, "bl_lod_enabled")
+        if scene.bl_lod_enabled:
+            box3 = layout.box()
+            box3.label(text="Faces kept vs LOD 0 (0 = skip)")
+            for i in range(1, 7):
+                box3.prop(scene, f"bl_lod{i}_ratio")
+
+        layout.separator()
         col.label(text="Physics Mesh (bo_):")
         col.prop(scene, "bl_bo_decimate_mode")
         if scene.bl_bo_decimate_mode == 'RATIO':
@@ -141,7 +157,7 @@ def register():
     )
     bpy.types.Scene.bl_decimate_ratio = bpy.props.FloatProperty(
         name="Decimate Ratio",
-        default=0.1,
+        default=0.5,
         min=0.01,
         max=1.0,
     )
@@ -166,6 +182,25 @@ def register():
         min=1,
         max=100,
     )
+    bpy.types.Scene.bl_lod_enabled = bpy.props.BoolProperty(
+        name="Auto Generate LODs",
+        description="Generate <name>.lod1 ... <name>.lod6 from the finished main mesh. LOD 0 is the main mesh itself and is never modified",
+        default=True,
+    )
+    for _i, _default in ((1, 0.9), (2, 0.8), (3, 0.6), (4, 0.4), (5, 0.2), (6, 0.05)):
+        setattr(
+            bpy.types.Scene,
+            f"bl_lod{_i}_ratio",
+            bpy.props.FloatProperty(
+                name=f"LOD{_i} Ratio",
+                description="Faces to keep vs LOD 0 (0 disables this LOD)",
+                default=_default,
+                min=0.0,
+                max=1.0,
+                step=1,
+                precision=2,
+            ),
+        )
     bpy.types.Scene.bl_voxel_adaptivity = bpy.props.FloatProperty(
         name="Voxel Adaptivity",
         description="Removes voxels in flat regions to cut face count. Disables Fix Poles",
@@ -308,6 +343,9 @@ def unregister():
     del bpy.types.Scene.bl_voxel_adaptivity
     del bpy.types.Scene.bl_simplify_method
     del bpy.types.Scene.bl_decimate_passes
+    del bpy.types.Scene.bl_lod_enabled
+    for _i in range(1, 7):
+        delattr(bpy.types.Scene, f"bl_lod{_i}_ratio")
     del bpy.types.Scene.bl_target_faces
     del bpy.types.Scene.bl_decimate_mode
     del bpy.types.Scene.bl_detail_weight

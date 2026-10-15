@@ -2,7 +2,7 @@ bl_info = {
     "name": "Bannerlord Prefab Processor",
     "description": "Process Bannerlord prefab exports: merge intersecting meshes, generate bo_ physics meshes, consolidate materials",
     "author": "OpenCode",
-    "version": (1, 2, 0),
+    "version": (1, 1, 0),
     "blender": (4, 5, 0),
     "location": "View3D > Sidebar > Bannerlord",
     "category": "Object",
@@ -81,7 +81,7 @@ class BANNERLORD_AddonPreferences(bpy.types.AddonPreferences):
     )
     decimate_ratio: FloatProperty(
         name="Decimate Ratio",
-        default=0.1,
+        default=0.5,
         min=0.01,
         max=1.0,
     )
@@ -95,6 +95,46 @@ class BANNERLORD_AddonPreferences(bpy.types.AddonPreferences):
         default=10,
         min=1,
         max=10,
+    )
+    lod_enabled: BoolProperty(
+        name="Auto Generate LODs",
+        default=True,
+    )
+    lod1_ratio: FloatProperty(
+        name="LOD1 Ratio",
+        default=0.9,
+        min=0.0,
+        max=1.0,
+    )
+    lod2_ratio: FloatProperty(
+        name="LOD2 Ratio",
+        default=0.8,
+        min=0.0,
+        max=1.0,
+    )
+    lod3_ratio: FloatProperty(
+        name="LOD3 Ratio",
+        default=0.6,
+        min=0.0,
+        max=1.0,
+    )
+    lod4_ratio: FloatProperty(
+        name="LOD4 Ratio",
+        default=0.4,
+        min=0.0,
+        max=1.0,
+    )
+    lod5_ratio: FloatProperty(
+        name="LOD5 Ratio",
+        default=0.2,
+        min=0.0,
+        max=1.0,
+    )
+    lod6_ratio: FloatProperty(
+        name="LOD6 Ratio",
+        default=0.05,
+        min=0.0,
+        max=1.0,
     )
     bo_decimate_mode: EnumProperty(
         name="bo_ Decimate Mode",
