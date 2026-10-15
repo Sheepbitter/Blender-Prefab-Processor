@@ -108,7 +108,8 @@ per-file), and are exactly what a standalone tool would also load.
 
 > **Status: implemented.** As designed below, with these outcomes: LOD 0 **is** the main
 > mesh and is never modified; ratios are measured against LOD 0 (defaults 0.9 / 0.8 /
-> 0.6 / 0.4 / 0.2 / 0.05, editable, `0` skips a LOD); LODs keep UVs and materials; `bo_`
+> 0.6 / 0.4 / 0.2 / 0.05, editable, each LOD individually toggleable -- skipped LODs
+> leave a numbering gap rather than renumbering); LODs keep UVs and materials; `bo_`
 > is not LOD'd; all LODs are exported into the same FBX as LOD 0; the `.lodN` suffix is
 > set on both the object and its mesh data.
 

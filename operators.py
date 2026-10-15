@@ -147,12 +147,19 @@ class BANNERLORD_OT_process_prefab(Operator):
 
     # These are a transfer bag, synced from the scene in execute() and never
     # drawn in UI, so they skip the description/step/precision ceremony.
-    lod1_ratio: FloatProperty(name="LOD1 Ratio", default=0.9, min=0.0, max=1.0)
-    lod2_ratio: FloatProperty(name="LOD2 Ratio", default=0.8, min=0.0, max=1.0)
-    lod3_ratio: FloatProperty(name="LOD3 Ratio", default=0.6, min=0.0, max=1.0)
-    lod4_ratio: FloatProperty(name="LOD4 Ratio", default=0.4, min=0.0, max=1.0)
-    lod5_ratio: FloatProperty(name="LOD5 Ratio", default=0.2, min=0.0, max=1.0)
-    lod6_ratio: FloatProperty(name="LOD6 Ratio", default=0.05, min=0.0, max=1.0)
+    lod1_enabled: BoolProperty(name="LOD1", default=True)
+    lod2_enabled: BoolProperty(name="LOD2", default=True)
+    lod3_enabled: BoolProperty(name="LOD3", default=True)
+    lod4_enabled: BoolProperty(name="LOD4", default=True)
+    lod5_enabled: BoolProperty(name="LOD5", default=True)
+    lod6_enabled: BoolProperty(name="LOD6", default=True)
+
+    lod1_ratio: FloatProperty(name="LOD1 Ratio", default=0.9, min=0.01, max=1.0)
+    lod2_ratio: FloatProperty(name="LOD2 Ratio", default=0.8, min=0.01, max=1.0)
+    lod3_ratio: FloatProperty(name="LOD3 Ratio", default=0.6, min=0.01, max=1.0)
+    lod4_ratio: FloatProperty(name="LOD4 Ratio", default=0.4, min=0.01, max=1.0)
+    lod5_ratio: FloatProperty(name="LOD5 Ratio", default=0.2, min=0.01, max=1.0)
+    lod6_ratio: FloatProperty(name="LOD6 Ratio", default=0.05, min=0.01, max=1.0)
 
     merge_method: EnumProperty(
         name="Merge Method",
@@ -217,6 +224,7 @@ class BANNERLORD_OT_process_prefab(Operator):
         self.export_path = scene.bl_export_path
         self.lod_enabled = scene.bl_lod_enabled
         for i in range(1, 7):
+            setattr(self, f"lod{i}_enabled", getattr(scene, f"bl_lod{i}_enabled"))
             setattr(self, f"lod{i}_ratio", getattr(scene, f"bl_lod{i}_ratio"))
 
         # Store original selection
@@ -1118,8 +1126,9 @@ class BANNERLORD_OT_process_prefab(Operator):
 
         Method, Detail Weight and pass count follow the main decimation via
         _simplify_mesh. UVs and materials are KEPT: a LOD is a render mesh,
-        and Bannerlord expects every LOD to share LOD 0's material set. A
-        ratio of 0 (or >= 1) skips that LOD.
+        and Bannerlord expects every LOD to share LOD 0's material set. Each
+        LOD can be toggled off individually; skipped LODs leave a numbering
+        gap (0, 2, 3, 4) rather than renumbering the rest.
         """
         if not self.lod_enabled:
             return []
@@ -1128,9 +1137,9 @@ class BANNERLORD_OT_process_prefab(Operator):
         lod0_faces = len(main_obj.data.polygons)
         lods = []
         for i in range(1, 7):
-            ratio = getattr(self, f"lod{i}_ratio")
-            if ratio <= 0.0:
+            if not getattr(self, f"lod{i}_enabled"):
                 continue
+            ratio = getattr(self, f"lod{i}_ratio")
             target = max(1, int(round(lod0_faces * ratio)))
             if target >= lod0_faces:
                 continue

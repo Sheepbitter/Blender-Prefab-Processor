@@ -19,11 +19,17 @@ PREF_FIELDS = (
     "target_faces",
     "decimate_passes",
     "lod_enabled",
+    "lod1_enabled",
     "lod1_ratio",
+    "lod2_enabled",
     "lod2_ratio",
+    "lod3_enabled",
     "lod3_ratio",
+    "lod4_enabled",
     "lod4_ratio",
+    "lod5_enabled",
     "lod5_ratio",
+    "lod6_enabled",
     "lod6_ratio",
     "bo_decimate_mode",
     "bo_decimate_ratio",
@@ -95,15 +101,6 @@ class BANNERLORD_PT_prefab_processor(Panel):
         col.prop(scene, "bl_consolidate_materials")
 
         layout.separator()
-        col.label(text="LODs:")
-        col.prop(scene, "bl_lod_enabled")
-        if scene.bl_lod_enabled:
-            box3 = layout.box()
-            box3.label(text="Faces kept vs LOD 0 (0 = skip)")
-            for i in range(1, 7):
-                box3.prop(scene, f"bl_lod{i}_ratio")
-
-        layout.separator()
         col.label(text="Physics Mesh (bo_):")
         col.prop(scene, "bl_bo_decimate_mode")
         if scene.bl_bo_decimate_mode == 'RATIO':
@@ -115,6 +112,19 @@ class BANNERLORD_PT_prefab_processor(Panel):
             col.prop(scene, "bl_bo_filter_strength")
         box2 = layout.box()
         box2.label(text="bo_ has no materials or UVs", icon='INFO')
+
+        layout.separator()
+        col.label(text="LODs:")
+        col.prop(scene, "bl_lod_enabled")
+        if scene.bl_lod_enabled:
+            box3 = layout.box()
+            box3.label(text="Faces kept vs LOD 0")
+            for i in range(1, 7):
+                row = box3.row()
+                row.prop(scene, f"bl_lod{i}_enabled", text=f"LOD{i}")
+                ratios = row.row()
+                ratios.enabled = getattr(scene, f"bl_lod{i}_enabled")
+                ratios.prop(scene, f"bl_lod{i}_ratio")
 
         layout.separator()
 
@@ -190,12 +200,21 @@ def register():
     for _i, _default in ((1, 0.9), (2, 0.8), (3, 0.6), (4, 0.4), (5, 0.2), (6, 0.05)):
         setattr(
             bpy.types.Scene,
+            f"bl_lod{_i}_enabled",
+            bpy.props.BoolProperty(
+                name=f"LOD{_i}",
+                description=f"Generate <name>.lod{_i}. Disabling a LOD leaves a numbering gap (e.g. 0, 2, 3, 4) rather than renumbering the rest",
+                default=True,
+            ),
+        )
+        setattr(
+            bpy.types.Scene,
             f"bl_lod{_i}_ratio",
             bpy.props.FloatProperty(
                 name=f"LOD{_i} Ratio",
-                description="Faces to keep vs LOD 0 (0 disables this LOD)",
+                description="Faces to keep vs LOD 0",
                 default=_default,
-                min=0.0,
+                min=0.01,
                 max=1.0,
                 step=1,
                 precision=2,
@@ -293,6 +312,42 @@ def register():
     bpy.app.timers.register(load_preferences, first_interval=0.1)
 
 
+# Bump when a shipped default changes. Each version lists the settings whose
+# default changed in that release: on upgrade only those are reset, so values
+# the user actually chose survive. Without this, saved preferences pin old
+# defaults forever -- measured: decimate_ratio came back as 0.1 on every new
+# Blender session after the default moved to 0.5.
+DEFAULTS_VERSION = 2
+DEFAULT_CHANGES = {
+    1: (
+        "merge_method", "island_culling", "simplify_method", "detail_weight",
+        "decimate_mode", "decimate_passes", "bo_decimate_mode",
+        "bo_decimate_ratio", "bo_filter_detail", "bo_filter_strength",
+        "consolidate_materials", "export_after",
+    ),
+    2: ("decimate_ratio",),
+}
+
+
+def _migrate_defaults(prefs):
+    """Reset only the settings whose shipped default changed since the user's
+    last version, then stamp the version. Returns True if it migrated."""
+    last = getattr(prefs, "defaults_version", 0)
+    if last >= DEFAULTS_VERSION:
+        return False
+    for version in range(last + 1, DEFAULTS_VERSION + 1):
+        for name in DEFAULT_CHANGES.get(version, ()):
+            prop = prefs.bl_rna.properties.get(name)
+            if prop is None:
+                continue
+            try:
+                setattr(prefs, name, prop.default)
+            except (TypeError, ValueError):
+                pass
+    prefs.defaults_version = DEFAULTS_VERSION
+    return True
+
+
 def load_preferences():
     """Copy saved preferences onto the scene properties."""
     if not bpy.context.scene:
@@ -302,6 +357,8 @@ def load_preferences():
         return None
 
     prefs = addon.preferences
+    # New defaults must win over old saved values, exactly once.
+    _migrate_defaults(prefs)
     scene = bpy.context.scene
     for name in PREF_FIELDS:
         prop = "bl_" + name
@@ -345,6 +402,7 @@ def unregister():
     del bpy.types.Scene.bl_decimate_passes
     del bpy.types.Scene.bl_lod_enabled
     for _i in range(1, 7):
+        delattr(bpy.types.Scene, f"bl_lod{_i}_enabled")
         delattr(bpy.types.Scene, f"bl_lod{_i}_ratio")
     del bpy.types.Scene.bl_target_faces
     del bpy.types.Scene.bl_decimate_mode

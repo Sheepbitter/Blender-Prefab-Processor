@@ -100,41 +100,70 @@ class BANNERLORD_AddonPreferences(bpy.types.AddonPreferences):
         name="Auto Generate LODs",
         default=True,
     )
+    lod1_enabled: BoolProperty(
+        name="LOD1",
+        default=True,
+    )
     lod1_ratio: FloatProperty(
         name="LOD1 Ratio",
         default=0.9,
-        min=0.0,
+        min=0.01,
         max=1.0,
+    )
+    lod2_enabled: BoolProperty(
+        name="LOD2",
+        default=True,
     )
     lod2_ratio: FloatProperty(
         name="LOD2 Ratio",
         default=0.8,
-        min=0.0,
+        min=0.01,
         max=1.0,
+    )
+    lod3_enabled: BoolProperty(
+        name="LOD3",
+        default=True,
     )
     lod3_ratio: FloatProperty(
         name="LOD3 Ratio",
         default=0.6,
-        min=0.0,
+        min=0.01,
         max=1.0,
+    )
+    lod4_enabled: BoolProperty(
+        name="LOD4",
+        default=True,
     )
     lod4_ratio: FloatProperty(
         name="LOD4 Ratio",
         default=0.4,
-        min=0.0,
+        min=0.01,
         max=1.0,
+    )
+    lod5_enabled: BoolProperty(
+        name="LOD5",
+        default=True,
     )
     lod5_ratio: FloatProperty(
         name="LOD5 Ratio",
         default=0.2,
-        min=0.0,
+        min=0.01,
         max=1.0,
+    )
+    lod6_enabled: BoolProperty(
+        name="LOD6",
+        default=True,
     )
     lod6_ratio: FloatProperty(
         name="LOD6 Ratio",
         default=0.05,
-        min=0.0,
+        min=0.01,
         max=1.0,
+    )
+    # Bookkeeping for the defaults migration in ui.py; not a user setting.
+    defaults_version: IntProperty(
+        name="Defaults Version",
+        default=0,
     )
     bo_decimate_mode: EnumProperty(
         name="bo_ Decimate Mode",

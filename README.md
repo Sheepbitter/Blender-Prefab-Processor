@@ -64,7 +64,7 @@ Use **Voxel Remesh** when the kitbash has bad self-intersections or you need a g
 | **Decimate Ratio** / **Target Face Count** | Main-mesh reduction (whichever mode is active) |
 | **Decimate Passes** | Number of collapse passes |
 | **Auto Generate LODs** | Generate `<name>.lod1` … `<name>.lod6` from the finished main mesh (see [Auto LODs](#auto-lods)). Enabled by default |
-| **LOD1–LOD6 Ratio** | Faces kept vs LOD 0. Defaults `0.9 / 0.8 / 0.6 / 0.4 / 0.2 / 0.05`. Set a ratio to `0` to skip that LOD |
+| **LOD1–LOD6** | Per-LOD on/off toggle plus ratio (faces kept vs LOD 0). Defaults `0.9 / 0.8 / 0.6 / 0.4 / 0.2 / 0.05` |
 | **Consolidate Materials** | Merge duplicate materials and remap faces |
 | **bo_ Decimate Mode** | `Ratio` or `Target Faces` (physics mesh) |
 | **bo_ Decimate Ratio** / **bo_ Target Face Count** | Physics-mesh reduction (whichever mode is active) |
@@ -88,7 +88,7 @@ Use **Voxel Remesh** when the kitbash has bad self-intersections or you need a g
 | LOD6 | 0.05 | 5% |
 
 - Ratios are measured against **LOD 0**, not against the previous LOD, so editing one does not shift the others.
-- Set a ratio to `0` to skip that LOD.
+- Each LOD can be toggled off individually. Skipping a LOD leaves a gap in the numbering (you can ship 0, 2, 3, 4) rather than renumbering the rest — the engine keys on the suffix.
 - LODs are named `<prefab_name>.lod1` … `.lod6` and are written into the **same FBX** as LOD 0 — the engine finds them by that suffix.
 - `bo_` is never LOD'd: Bannerlord physics is a single mesh.
 
@@ -110,6 +110,7 @@ For reference, the default LOD distances in the Bannerlord scene editor are 15, 
 
 ### To Do (one day)
 - Get the settings to save and persist
+- Reprocessing the same OBJ leaves Blender's numeric suffix on the material names (`diff_soil.002`, then `.003`, …), which Bannerlord can't resolve since its materials have no suffix. Strip the suffixes / reuse the originals on redo.
 - Improve the tool to create/weld overlapping faces for new edges. This will allow the safety net of keeping any vertices that share a face with the first pass known good vertices to be removed and let the interior culling be complete and total without introducing any potential holes/gaps.
 - Add clean batch processing.
 - Make the add-on a standalone tool, cause all this stuff doesn't actually need blender. I've already done half or so of this in another project for a different standalone tool, so I don't see a reason blender would actually be required. Maybe a hybrid that can be run standalone and hooks into blender as an addon so people who prefer to use it that way can. After all, you can make your own adjustments manually in blender directly, so there's good reason to keep it.
